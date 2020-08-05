@@ -7,6 +7,54 @@ class HashTableEntry:
         self.value = value
         self.next = None
 
+class LinkedList:
+    def __init__(self):
+        self.head = None
+
+    def find(self, key): 
+        # check to see if key exists in LL...if it does, return the node. If not, return None. 
+        current = self.head
+        while current is not None: 
+            if current.key == key:
+                return current
+            current = current.next
+        return None
+
+    def insert_at_head(self, key, value): 
+        # check list to see if key is already in LL
+        # if it is, update it's value to the new value being passed in
+        found_node = self.find(key)
+        if found_node is not None: 
+            found_node.value = value
+            return 
+
+        # if it's not there, make a new node and insert at head...existing head becomes new node's next value
+        new_node = HashTableEntry(key, value)
+        new_node.next = self.head
+        self.head = new_node
+    
+    def delete(self, key):
+        # start at head
+        curr = self.head
+
+        # if we want to delete the head, reassign self.head to curr.next and set curr to None
+        if curr is not None: 
+            if curr.key == key:
+                self.head = curr.next
+                curr = None
+        
+        # if it's not the head, search for the node we want to delete...keeep track of prev
+        while curr is not None: 
+            if curr.key == key: 
+                break
+            prev = curr
+            curr = curr.next
+        # if key not found 
+        if curr is None: 
+            return 
+        # unlink node and set it's value to None
+        prev.next = curr.next 
+        curr = None
 
 # Hash table can't have fewer than this many slots
 MIN_CAPACITY = 8
@@ -26,9 +74,9 @@ class HashTable:
             self.capacity = capacity
         else: 
             self.capacity = MIN_CAPACITY
-
-        self.storage = [None] * capacity
-
+        # Day 1: self.storage = [None] * capacity
+        self.storage = [LinkedList()] * capacity # change to LL instance
+        self.item_count = 0
 
     def get_num_slots(self):
         """
@@ -41,7 +89,7 @@ class HashTable:
         Implement this.
         """
         # Your code here
-        pass
+        return self.capacity
 
     def get_load_factor(self):
         """
@@ -50,7 +98,7 @@ class HashTable:
         Implement this.
         """
         # Your code here
-        pass
+        return self.item_count / self.capacity
 
 
     def fnv1(self, key):
@@ -71,11 +119,11 @@ class HashTable:
         Implement this, and/or FNV-1.
         """
         # Your code here
-        hash = 5381
-        for x in key:
-            hash = ((hash << 5) + hash) + ord(x)
-        return hash & 0xFFFFFFFF
-
+        hash_var = 5381
+        string_bytes = key.encode()
+        for b in string_bytes:
+            hash_var = ((hash_var << 5) + hash_var) + b
+        return hash_var
 
     def hash_index(self, key):
         """
@@ -93,8 +141,19 @@ class HashTable:
 
         Implement this.
         """
-        # Your code here
-        self.storage[self.hash_index(key)] = value
+        # DAY 1: self.storage[self.hash_index(key)] = value
+
+        # get hash index
+        index = self.hash_index(key)
+        # call insert_at_head LL method
+        self.storage[index].insert_at_head(key, value)
+        # increment item_count
+        self.item_count += 1
+
+        # check if load factor is >= 0.7
+        if self.get_load_factor() > 0.7: 
+            # if it is, resize w/ doubled capacity
+            self.resize(self.capacity * 2)
 
     def delete(self, key):
         """
@@ -104,12 +163,28 @@ class HashTable:
 
         Implement this.
         """
-        # Your code here
-        if self.storage[self.hash_index(key)] is None:
-            return("Key not found")
-        else:
-            self.storage[self.hash_index(key)] = None
+        # DAY 1: 
+        # if self.storage[self.hash_index(key)] is None:
+        #     return("Key not found")
+        # else:
+        #     self.storage[self.hash_index(key)] = None
 
+        # get hash index
+        index = self.hash_index(key)
+        # check if key is there...if not, print warning
+        if self.storage[index].find(key) is None: 
+            print("Key not found")
+            return
+        # call LL delete method
+        self.storage[index].delete(key)
+        # decrement item_count
+        self.item_count -= 1
+
+        # check if load factor is < 0.2 and if capacity is greater than double the minimum capacity
+        if self.get_load_factor() < 0.2 and self.capacity > (MIN_CAPACITY * 2): 
+            # resize to half the capacity
+            new_capacity = self.capacity / 2
+            self.resize(new_capacity)
 
     def get(self, key):
         """
@@ -119,8 +194,16 @@ class HashTable:
 
         Implement this.
         """
-        # Your code here
-        return self.storage[self.hash_index(key)]
+        # DAY 1: return self.storage[self.hash_index(key)]
+
+        # get hash index
+        index = self.hash_index(key)
+        # call LL find method
+        found_node = self.storage[index].find(key)
+        if found_node is not None: 
+            return found_node.value
+        else: 
+            return None
 
 
     def resize(self, new_capacity):
@@ -131,7 +214,15 @@ class HashTable:
         Implement this.
         """
         # Your code here
-        pass
+        new_storage = [LinkedList()] * new_capacity
+        # self.capacity = new_capacity
+        for i in range(len(self.storage)):
+            cur = self.storage[i].head
+            while cur is not None: 
+                new_storage[i].insert_at_head(cur.key, cur.value)
+                cur = cur.next
+        self.capacity = new_capacity
+        self.storage = new_storage
 
 
 if __name__ == "__main__":
